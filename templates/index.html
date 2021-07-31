@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot UI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/Css/main.css">
+    <link rel="stylesheet" href="/static/Css/chatBot.css">
+    <link rel="shortcut icon" href="/static/gfx/logo.png" type="image/x-icon">
+    <style></style>
+</head>
+<body>
+    <div class="header">
+        <h1>Lara | Computational Intelligence</h1>
+      </div>
+    <div class="chatBot">
+        <div class="chatBotHeading">
+            <label for="chatTextBox" id="chatOpenTrigger" class="">Any Queries? Ask Me!</label>
+        </div>
+        <hr class="">
+        <div class="chatBody">
+            <div class="chatSession">
+            </div>
+        </div>
+        <form class="chatForm" autocomplete="off" action="" method="POST">
+            <div class="typingArea">
+                <textarea name="chatInput" id="chatTextBox" class="textArea" onblur="if(!validateMessage()) this.value = 'Try, What is special today?'" onfocus="if(!validateMessage()) this.value = ''" value="{{
+                    request.form.query }}"></textarea>
+                <button type="submit" class="sendButton" id="sendButton"><img src="https://th.bing.com/th/id/R.14e630fce2aaa70dd628ba3cbdaece49?rik=ECfKoG6Qdu0Zig&riu=http%3a%2f%2fcdn.onlinewebfonts.com%2fsvg%2fimg_183020.png&ehk=Db%2bDcVg3lxDC5CiCPM1ENgODe2QF1BEdsfI%2fZfblM7E%3d&risl=&pid=ImgRaw" alt="Send" srcset=""></button>
+            </div>
+            <button type="button" id="chatCloseTrigger">Close Chat!</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        window.onload = function() {
+            window.confirm("Hello user, Sometimes you may get a blank reply from Lara, in such cases please retype your query. Thanks:)")
+        }
+        // Selecting element to view chat
+var chatBotSession              = document.querySelector( ".chatBot .chatBody .chatSession" )
+
+// Selecting trigger elements of conversation
+var chatBotSendButton           = document.querySelector( ".chatBot .chatForm #sendButton" )
+var chatBotTextArea             = document.querySelector( ".chatBot .chatForm #chatTextBox" )
+
+// Default values for replies
+var chatBotInitiateMessage      = "Hello! I am Lara."
+var chatBotBlankMessageReply    = "Type something!"
+var chatBotReply                = "{{ reply }}"
+
+// Collecting user input
+var inputMessage                = ""
+
+// This helps generate text containers in the chat
+var typeOfContainer             = ""
+
+// Function to open ChatBot
+chatBotSendButton.addEventListener("click", (event)=> {
+    // Since the button is a submit button, the form gets submittd and the complete webpage reloads. This prevents the page from reloading. We would submit the message later manually
+    event.preventDefault()
+    if( validateMessage() ){
+        inputMessage    = chatBotTextArea.value
+        typeOfContainer = "message"
+        createContainer( typeOfContainer )
+        setTimeout(function(){
+            typeOfContainer = "reply"
+            createContainer( typeOfContainer )
+        },6000);
+        $.ajax({
+            data: {
+                msg: inputMessage,
+                },
+            type: "POST",
+            url: "/get",
+        }).done(function(data){
+            chatBotReply = data
+        })
+        
+    }
+    else{        
+        typeOfContainer = "error";
+        createContainer( typeOfContainer )
+    }
+    chatBotTextArea.value = ""
+    chatBotTextArea.focus()
+})
+
+function createContainer( typeOfContainer ) {
+    var containerID = ""
+    var textClass   = ""
+    switch( typeOfContainer ) {
+        case "message"      :
+            // This would create a message container for user's message
+            containerID = "messageContainer"
+            textClass   = "message"
+            break;
+        case "reply"        :
+        case "initialize"   :
+        case "error"        :
+            // This would create a reply container for bot's reply
+            containerID = "replyContainer"
+            textClass   = "reply"
+            break;
+        default :
+            alert("Error! Please reload the webiste.")
+    }
+
+    // Creating container
+    var newContainer = document.createElement( "div" )
+    newContainer.setAttribute( "class" , "container" )
+    if( containerID == "messageContainer" )
+        newContainer.setAttribute( "id" , "messageContainer" )
+    if( containerID == "replyContainer" )
+        newContainer.setAttribute( "id" , "replyContainer" )
+    chatBotSession.appendChild( newContainer )
+
+    switch( textClass ) {
+        case "message"  :
+            var allMessageContainers    = document.querySelectorAll("#messageContainer")
+            var lastMessageContainer    = allMessageContainers[ allMessageContainers.length - 1 ]
+            var newMessage              = document.createElement( "p" )
+            newMessage.setAttribute( "class" , "message animateChat" )
+            newMessage.innerHTML        = inputMessage
+            lastMessageContainer.appendChild( newMessage )
+            lastMessageContainer.scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"})
+            break
+        case "reply"    :
+            var allReplyContainers      = document.querySelectorAll( "#replyContainer" )    
+            var lastReplyContainer      = allReplyContainers[ allReplyContainers.length - 1 ]
+            var newReply                = document.createElement( "p" )
+            newReply.setAttribute( "class" , "reply animateChat accentColor" )
+            switch( typeOfContainer ){
+                case "reply"        :
+                    newReply.innerHTML  = chatBotReply
+                    break
+                case "initialize"   :
+                    newReply.innerHTML  = chatBotInitiateMessage
+                    break
+                case "error"        :
+                    newReply.innerHTML  = chatBotBlankMessageReply
+                    break
+                default             :
+                    newReply.innerHTML  = "Sorry! I could not understannd."
+            }
+            setTimeout(function (){
+                lastReplyContainer.appendChild( newReply )
+                lastReplyContainer.scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"})
+            }, 10)            
+            break
+        default         :
+            console.log("Error in conversation")
+    }
+}
+
+function initiateConversation() {
+    chatBotSession.innerHTML = ""
+    typeOfContainer = "initialize"
+    createContainer( typeOfContainer )
+}
+    </script>
+    <!-- JavaScripts from native directory -->
+    <script src="/static/Js/chatBotValidate.js"></script>
+    <script src="/static/Js/chatBotAnimate.js"></script>
+    <!--     <script src="./Js/chatBotCustom.js"></script> -->
+    
+    <!-- JavaScripts from GitHub directory -->
+    <script src="/static/Js/chatBotLiveCustom.js"></script>
+    <script src="/static/Js/customSettingsDownload.js"></script>
+
+    <!-- JavaScripts for GitHub buttons -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+</body>
+</html>
